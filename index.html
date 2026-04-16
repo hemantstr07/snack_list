@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Office Daily Snack List Manager — Track snacks, costs, and members in one place." />
+  <meta name="theme-color" content="#0f1117" />
+
+  <title>🍩 SnackTrack — Office Snack List Manager</title>
+
+  <!-- Preconnect for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link rel="stylesheet" href="style.css" />
+  <!-- html2pdf.js for client-side PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP WRAPPER
+══════════════════════════════════════════════════════════ -->
+<div class="app-wrapper">
+
+  <!-- ── Header ───────────────────────────────────────────── -->
+  <header class="app-header" role="banner">
+    <div class="header-brand">
+      <div class="brand-icon" aria-hidden="true">🍩</div>
+      <div>
+        <div class="brand-title">SnackTrack</div>
+        <div class="brand-subtitle">Office Daily Snack Manager</div>
+      </div>
+    </div>
+    <div class="header-date">
+      <div class="date-label">Today</div>
+      <div class="date-value" id="header-date">—</div>
+    </div>
+  </header>
+
+  <!-- ── Stats Bar ─────────────────────────────────────────── -->
+  <section class="stats-bar" aria-label="Summary statistics">
+
+    <div class="stat-card" title="Total members today">
+      <div class="stat-icon purple" aria-hidden="true">👥</div>
+      <div class="stat-info">
+        <div class="stat-label">Members</div>
+        <div class="stat-value" id="stat-members">0</div>
+      </div>
+    </div>
+
+    <div class="stat-card" title="Total snacks ordered today">
+      <div class="stat-icon green" aria-hidden="true">🍱</div>
+      <div class="stat-info">
+        <div class="stat-label">Snacks</div>
+        <div class="stat-value" id="stat-snacks">0</div>
+      </div>
+    </div>
+
+    <div class="stat-card" title="Grand total cost for today">
+      <div class="stat-icon yellow" aria-hidden="true">💰</div>
+      <div class="stat-info">
+        <div class="stat-label">Grand Total</div>
+        <div class="stat-value" id="stat-total">₹0.00</div>
+      </div>
+    </div>
+
+    <div class="stat-card" title="Member with highest spending">
+      <div class="stat-icon red" aria-hidden="true">👑</div>
+      <div class="stat-info">
+        <div class="stat-label">Top Spender</div>
+        <div class="stat-value" id="stat-top" style="font-size:14px;line-height:1.4;">—</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── Action Bar ────────────────────────────────────────── -->
+  <div class="action-bar" role="toolbar" aria-label="List actions">
+
+    <!-- Search -->
+    <div class="search-box">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input 
+        type="search" 
+        id="search-input" 
+        placeholder="Search members or snacks…" 
+        aria-label="Search members or snacks"
+        autocomplete="off"
+      />
+    </div>
+
+    <!-- Add Member button -->
+    <button 
+      class="btn btn-primary" 
+      id="btn-add-member"
+      onclick="toggleAddMemberPanel()"
+      aria-expanded="false"
+      aria-controls="add-member-panel"
+    >
+      <span aria-hidden="true">＋</span>
+      <span class="btn-label">Add Member</span>
+    </button>
+
+    <!-- Copy yesterday's list -->
+    <button 
+      class="btn btn-success" 
+      id="btn-copy-yesterday"
+      onclick="copyYesterdayList()"
+      title="Copy yesterday's snack list to today"
+    >
+      <span aria-hidden="true">📋</span>
+      <span class="btn-label">Copy Yesterday</span>
+    </button>
+
+    <!-- Reset today -->
+    <button 
+      class="btn btn-warning" 
+      id="btn-reset"
+      onclick="resetToday()"
+      title="Clear all of today's snacks and members"
+    >
+      <span aria-hidden="true">🔄</span>
+      <span class="btn-label">Reset Today</span>
+    </button>
+
+    <!-- Export PDF -->
+    <button 
+      class="btn btn-pdf" 
+      id="btn-export-pdf"
+      onclick="exportPDF()"
+      title="Download snack report as PDF"
+    >
+      <span aria-hidden="true">📄</span>
+      <span class="btn-label">Export PDF</span>
+    </button>
+
+  </div>
+
+  <!-- ── Add Member Panel ───────────────────────────────────── -->
+  <div 
+    class="add-member-panel" 
+    id="add-member-panel"
+    role="form"
+    aria-label="Add new member"
+  >
+    <p class="section-title" style="margin-bottom:12px;">
+      <span>👤</span> New Member
+    </p>
+    <div class="form-row">
+      <input 
+        class="form-input" 
+        type="text" 
+        id="new-member-name" 
+        placeholder="Enter member name (e.g. Aarav, Priya…)"
+        aria-label="New member name"
+        maxlength="60"
+        autocomplete="off"
+      />
+      <button class="btn btn-primary" onclick="submitAddMember()" id="btn-confirm-add-member">
+        <span>✓</span> Add Member
+      </button>
+      <button class="btn btn-secondary" onclick="toggleAddMemberPanel()">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Members List ──────────────────────────────────────── -->
+  <div class="section-title">
+    <span>📋</span> Today's Snack List
+  </div>
+
+  <main class="members-grid" id="members-container" role="main" aria-live="polite">
+    <!-- Member cards rendered by JS -->
+  </main>
+
+</div><!-- /.app-wrapper -->
+
+<!-- ══════════════════════════════════════════════════════════
+     HIDDEN PDF TEMPLATE  (rendered off-screen before export)
+══════════════════════════════════════════════════════════ -->
+<div id="pdf-template" aria-hidden="true"></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CONFIRM MODAL
+══════════════════════════════════════════════════════════ -->
+<div 
+  class="modal-overlay" 
+  id="modal-overlay" 
+  style="display:none;" 
+  role="dialog" 
+  aria-modal="true" 
+  aria-labelledby="modal-title"
+>
+  <div class="modal-box">
+    <h2 class="modal-title" id="modal-title">Confirm Action</h2>
+    <p class="modal-desc" id="modal-desc">Are you sure?</p>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()" id="btn-modal-cancel">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmModal()" id="btn-modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TOAST CONTAINER
+══════════════════════════════════════════════════════════ -->
+<div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+
+
+<!-- ── Scripts ──────────────────────────────────────────────── -->
+<script src="app.js"></script>
+
+</body>
+</html>

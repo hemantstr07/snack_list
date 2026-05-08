@@ -13,8 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
   <link rel="stylesheet" href="style.css" />
-  <!-- html2pdf.js for client-side PDF export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 </head>
 <body>
 
@@ -124,16 +123,7 @@
       <span class="btn-label">Reset Today</span>
     </button>
 
-    <!-- Export PDF -->
-    <button 
-      class="btn btn-pdf" 
-      id="btn-export-pdf"
-      onclick="exportPDF()"
-      title="Download snack report as PDF"
-    >
-      <span aria-hidden="true">📄</span>
-      <span class="btn-label">Export PDF</span>
-    </button>
+
 
   </div>
 
@@ -175,12 +165,17 @@
     <!-- Member cards rendered by JS -->
   </main>
 
+  <!-- ── Total Quantity Summary ───────────────────────────── -->
+  <div class="section-title" id="qty-summary-title" style="margin-top:32px;display:none;">
+    <span>🛒</span> Order Summary — Total Quantities
+  </div>
+  <div class="qty-summary-panel" id="qty-summary-panel" aria-label="Order quantity summary" style="display:none;">
+    <!-- Rendered by JS -->
+  </div>
+
 </div><!-- /.app-wrapper -->
 
-<!-- ══════════════════════════════════════════════════════════
-     HIDDEN PDF TEMPLATE  (rendered off-screen before export)
-══════════════════════════════════════════════════════════ -->
-<div id="pdf-template" aria-hidden="true"></div>
+
 
 
 <!-- ══════════════════════════════════════════════════════════

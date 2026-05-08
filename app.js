@@ -295,10 +295,11 @@ function resetToday() {
 
 // ── RENDER ENGINE ──────────────────────────────────────────
 
-/** Main render: stats + members list */
+/** Main render: stats + members list + order summary */
 function renderAll() {
   renderStats();
   renderMembers();
+  renderQuantitySummary();
 }
 
 /** Render the 4 stat cards at the top */
@@ -563,138 +564,86 @@ function groupSnacks(snacks) {
   return Array.from(map.values());
 }
 
-// ── EXPORT PDF ──────────────────────────────────────────────
-function exportPDF() {
-  if (!members.length) {
-    return showToast('No data to export. Add members first.', 'warning');
+// ── RENDER ORDER SUMMARY (Total Quantity Wise) ──────────────
+/**
+ * Aggregates ALL snacks from ALL members into one grouped list,
+ * sorted by total quantity descending. Renders a clean summary
+ * panel at the bottom so the person ordering can see
+ * exactly how many of each item to buy and the total cost.
+ */
+function renderQuantitySummary() {
+  const titleEl = document.getElementById('qty-summary-title');
+  const panel   = document.getElementById('qty-summary-panel');
+  if (!titleEl || !panel) return;
+
+  // Collect every snack across all members
+  const allSnacks = members.flatMap(m => m.snacks);
+
+  if (!allSnacks.length) {
+    titleEl.style.display = 'none';
+    panel.style.display   = 'none';
+    return;
   }
 
-  const dateStr  = formatDate(todayKey());                        // "Wednesday, April 16, 2025"
-  const filename = `snack-report-${todayKey()}.pdf`;
-  const gt       = grandTotal();
-  const totalSnacks = members.reduce((s, m) => s + m.snacks.length, 0);
-  const now      = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  titleEl.style.display = '';
+  panel.style.display   = '';
 
-  // ── Build member blocks HTML ──────────────────────────
-  const memberBlocksHTML = members.map(member => {
-    const grouped = groupSnacks(member.snacks);
-    const mTotal  = memberTotal(member);
-
-    if (!grouped.length) {
-      return `
-        <div class="pdf-member-block">
-          <div class="pdf-member-name">&#128100; ${escHtml(member.name)}</div>
-          <p style="color:#9ca3af;font-size:12px;padding:6px 10px;">No snacks recorded.</p>
-          <div class="pdf-member-total-row">
-            <span>Member Total</span>
-            <span>&#8377;0.00</span>
-          </div>
-        </div>`;
+  // Group by item name (case-insensitive) + unit price
+  const map = new Map();
+  allSnacks.forEach(s => {
+    const key = s.item.toLowerCase().trim() + '||' + Number(s.price);
+    if (map.has(key)) {
+      const row = map.get(key);
+      row.qty   += 1;
+      row.total += Number(s.price);
+    } else {
+      map.set(key, {
+        item:      s.item.trim(),
+        unitPrice: Number(s.price),
+        qty:       1,
+        total:     Number(s.price)
+      });
     }
+  });
 
-    const rows = grouped.map(g => `
-      <tr>
-        <td>${escHtml(g.item)}</td>
-        <td class="pdf-qty-cell" style="text-align:center;">&#215;${g.qty}</td>
-        <td class="pdf-unit-price-cell">&#8377;${g.unitPrice.toFixed(2)}</td>
-        <td class="pdf-total-cell">&#8377;${g.total.toFixed(2)}</td>
-      </tr>`).join('');
+  // Sort: highest quantity first, then alphabetically
+  const rows = Array.from(map.values())
+    .sort((a, b) => b.qty - a.qty || a.item.localeCompare(b.item));
 
-    return `
-      <div class="pdf-member-block">
-        <div class="pdf-member-name">&#128100; ${escHtml(member.name)}</div>
-        <table class="pdf-snack-table">
-          <thead>
-            <tr>
-              <th>Snack Item</th>
-              <th style="text-align:center;">Qty</th>
-              <th>Unit Price</th>
-              <th style="text-align:right;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-        <div class="pdf-member-total-row">
-          <span>Member Total</span>
-          <span>&#8377;${mTotal.toFixed(2)}</span>
-        </div>
-      </div>`;
-  }).join('');
+  const grandQty   = rows.reduce((s, r) => s + r.qty,   0);
+  const grandCost  = rows.reduce((s, r) => s + r.total, 0);
 
-  // ── Assemble complete PDF HTML ────────────────────────
-  const html = `
-    <div class="pdf-report">
-      <!-- Company / Report Header -->
-      <div class="pdf-logo-row">
-        <div style="font-size:28px;">&#127849;</div>
-        <div>
-          <div class="pdf-company">SnackTrack</div>
-          <div class="pdf-tagline">Office Daily Snack Manager</div>
-        </div>
-      </div>
+  const rowsHTML = rows.map((r, i) => `
+    <tr class="qty-row">
+      <td class="qty-num">${i + 1}</td>
+      <td class="qty-item">${escHtml(r.item)}</td>
+      <td class="qty-unit">${formatPrice(r.unitPrice)}</td>
+      <td class="qty-qty"><span class="qty-badge">×${r.qty}</span></td>
+      <td class="qty-total">${formatPrice(r.total)}</td>
+    </tr>`).join('');
 
-      <hr class="pdf-header-divider">
-
-      <div class="pdf-report-title">&#128196; Daily Snack Report</div>
-      <div class="pdf-date">${dateStr}</div>
-
-      <div class="pdf-meta-row">
-        <span>&#128101; Members: ${members.length}</span>
-        <span>&#127857; Snacks: ${totalSnacks}</span>
-        <span>&#128336; Generated at: ${now}</span>
-        <span>&#9997;&#65039; Prepared by: SnackTrack</span>
-      </div>
-
-      <!-- Member Sections -->
-      ${memberBlocksHTML}
-
-      <!-- Grand Total -->
-      <div class="pdf-grand-total-bar">
-        <span class="pdf-grand-total-label">&#127881; Grand Total</span>
-        <span class="pdf-grand-total-value">&#8377;${gt.toFixed(2)}</span>
-      </div>
-
-      <!-- Footer -->
-      <div class="pdf-footer">
-        Generated by SnackTrack &bull; ${dateStr} &bull; ${now}
-      </div>
-    </div>`;
-
-  // ── Inject into hidden template and export ────────────
-  const template = document.getElementById('pdf-template');
-  template.innerHTML = html;
-
-  const btn = document.getElementById('btn-export-pdf');
-  btn.disabled = true;
-  btn.innerHTML = '<span>&#8987;</span><span class="btn-label">Generating…</span>';
-
-  const opt = {
-    margin:       [8, 8, 8, 8],          // mm
-    filename,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true, logging: false },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-  };
-
-  html2pdf()
-    .set(opt)
-    .from(template)
-    .save()
-    .then(() => {
-      template.innerHTML = '';
-      btn.disabled = false;
-      btn.innerHTML = '<span>&#128196;</span><span class="btn-label">Export PDF</span>';
-      showToast(`PDF saved as "${filename}"`, 'success', 4000);
-    })
-    .catch(err => {
-      template.innerHTML = '';
-      btn.disabled = false;
-      btn.innerHTML = '<span>&#128196;</span><span class="btn-label">Export PDF</span>';
-      showToast('PDF export failed. Try again.', 'error');
-      console.error('PDF export error:', err);
-    });
+  panel.innerHTML = `
+    <table class="qty-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Snack Item</th>
+          <th>Unit Price</th>
+          <th style="text-align:center;">Qty</th>
+          <th style="text-align:right;">Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHTML}
+      </tbody>
+      <tfoot>
+        <tr class="qty-footer-row">
+          <td colspan="3"><strong>🛒 Grand Order Total</strong></td>
+          <td style="text-align:center;"><strong>×${grandQty}</strong></td>
+          <td style="text-align:right;"><strong>${formatPrice(grandCost)}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
 }
 
